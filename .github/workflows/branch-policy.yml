@@ -1,0 +1,33 @@
+name: Branch policy
+
+on:
+  pull_request:
+    branches:
+      - master
+    types: [opened, reopened, synchronize, edited]
+
+permissions:
+  contents: read
+
+jobs:
+  source-branch-policy:
+    name: source-branch-policy
+    runs-on: ubuntu-latest
+    steps:
+      - name: Only allow dev -> master
+        env:
+          HEAD_REPO: ${{ github.event.pull_request.head.repo.full_name }}
+          HEAD_REF: ${{ github.head_ref }}
+          BASE_REF: ${{ github.base_ref }}
+        run: |
+          if [ "$HEAD_REPO" != "$GITHUB_REPOSITORY" ]; then
+            echo "::error::Pull requests into '$BASE_REF' must come from a branch in $GITHUB_REPOSITORY (got '$HEAD_REPO')."
+            exit 1
+          fi
+
+          if [ "$HEAD_REF" != "dev" ]; then
+            echo "::error::Pull requests into '$BASE_REF' must come from 'dev' (got '$HEAD_REF'). Merge your work into dev first, then open dev -> master."
+            exit 1
+          fi
+
+          echo "OK: $HEAD_REF -> $BASE_REF"
