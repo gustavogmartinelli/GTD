@@ -1,0 +1,657 @@
+{
+  "_type": "export",
+  "__export_format": 4,
+  "__export_date": "2026-09-29T00:00:00.000Z",
+  "__export_source": "gtd.repo",
+  "resources": [
+    {
+      "_id": "wrk_gtd",
+      "_type": "workspace",
+      "parentId": null,
+      "name": "GTD API",
+      "description": "Local GTD JSON API (Go + SQLite). Start the server with:\n\n    go run ./cmd/gtd-server\n\nIt listens on :8080 by default (override with -addr) and stores data in gtd.db (override with -db).\n\nSet item_id in the environment to the id returned by 'Capture item'.",
+      "scope": "collection"
+    },
+    {
+      "_id": "env_base",
+      "_type": "environment",
+      "parentId": "wrk_gtd",
+      "name": "Base Environment",
+      "data": {
+        "base_url": "http://localhost:8080",
+        "item_id": "1"
+      },
+      "dataPropertyOrder": {
+        "&": [
+          "base_url",
+          "item_id"
+        ]
+      },
+      "color": null,
+      "isPrivate": false,
+      "metaSortKey": 1
+    },
+    {
+      "_id": "fld_health",
+      "_type": "request_group",
+      "parentId": "wrk_gtd",
+      "name": "01 Health",
+      "description": "Liveness check.",
+      "environment": {},
+      "environmentPropertyOrder": null,
+      "metaSortKey": -1000
+    },
+    {
+      "_id": "fld_capture",
+      "_type": "request_group",
+      "parentId": "wrk_gtd",
+      "name": "02 Capture",
+      "description": "GTD 'capture': get stuff out of your head and into the inbox.",
+      "environment": {},
+      "environmentPropertyOrder": null,
+      "metaSortKey": -900
+    },
+    {
+      "_id": "fld_read",
+      "_type": "request_group",
+      "parentId": "wrk_gtd",
+      "name": "03 Read & filter",
+      "description": "Listing and fetching items.",
+      "environment": {},
+      "environmentPropertyOrder": null,
+      "metaSortKey": -800
+    },
+    {
+      "_id": "fld_workflow",
+      "_type": "request_group",
+      "parentId": "wrk_gtd",
+      "name": "04 Clarify & do",
+      "description": "Process an inbox item into a next action, edit it, complete it.",
+      "environment": {},
+      "environmentPropertyOrder": null,
+      "metaSortKey": -700
+    },
+    {
+      "_id": "fld_cleanup",
+      "_type": "request_group",
+      "parentId": "wrk_gtd",
+      "name": "05 Delete",
+      "description": "Removing items.",
+      "environment": {},
+      "environmentPropertyOrder": null,
+      "metaSortKey": -600
+    },
+    {
+      "_id": "req_health",
+      "_type": "request",
+      "parentId": "fld_health",
+      "name": "Health check",
+      "description": "200 {\"status\":\"ok\"}",
+      "method": "GET",
+      "url": "{{ _.base_url }}/healthz",
+      "body": {},
+      "headers": [],
+      "parameters": [],
+      "authentication": {},
+      "metaSortKey": -1000,
+      "isPrivate": false,
+      "pathParameters": [],
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global"
+    },
+    {
+      "_id": "req_capture",
+      "_type": "request",
+      "parentId": "fld_capture",
+      "name": "Capture item",
+      "description": "201 with the created item. Copy the returned id into the item_id environment variable.\n\nNew items always land with status 'inbox' - the API ignores any status you send here.",
+      "method": "POST",
+      "url": "{{ _.base_url }}/items",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"title\": \"Buy coffee beans\",\n  \"notes\": \"the dark roast from the place on 5th\"\n}"
+      },
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "parameters": [],
+      "authentication": {},
+      "metaSortKey": -1000,
+      "isPrivate": false,
+      "pathParameters": [],
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global"
+    },
+    {
+      "_id": "req_capture_min",
+      "_type": "request",
+      "parentId": "fld_capture",
+      "name": "Capture item (title only)",
+      "description": "notes is optional.",
+      "method": "POST",
+      "url": "{{ _.base_url }}/items",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"title\": \"Call the dentist\"\n}"
+      },
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "parameters": [],
+      "authentication": {},
+      "metaSortKey": -900,
+      "isPrivate": false,
+      "pathParameters": [],
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global"
+    },
+    {
+      "_id": "req_capture_empty",
+      "_type": "request",
+      "parentId": "fld_capture",
+      "name": "Capture item - empty title (400)",
+      "description": "400 {\"error\":\"title is required\"}. Whitespace-only titles are trimmed and rejected too.",
+      "method": "POST",
+      "url": "{{ _.base_url }}/items",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"title\": \"   \",\n  \"notes\": \"should fail\"\n}"
+      },
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "parameters": [],
+      "authentication": {},
+      "metaSortKey": -800,
+      "isPrivate": false,
+      "pathParameters": [],
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global"
+    },
+    {
+      "_id": "req_capture_badjson",
+      "_type": "request",
+      "parentId": "fld_capture",
+      "name": "Capture item - malformed JSON (400)",
+      "description": "400 {\"error\":\"invalid JSON body\"}",
+      "method": "POST",
+      "url": "{{ _.base_url }}/items",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{ not json"
+      },
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "parameters": [],
+      "authentication": {},
+      "metaSortKey": -700,
+      "isPrivate": false,
+      "pathParameters": [],
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global"
+    },
+    {
+      "_id": "req_list",
+      "_type": "request",
+      "parentId": "fld_read",
+      "name": "List items",
+      "description": "200 with an array. Completed items are hidden unless include_completed=true.",
+      "method": "GET",
+      "url": "{{ _.base_url }}/items",
+      "body": {},
+      "headers": [],
+      "parameters": [],
+      "authentication": {},
+      "metaSortKey": -1000,
+      "isPrivate": false,
+      "pathParameters": [],
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global"
+    },
+    {
+      "_id": "req_list_inbox",
+      "_type": "request",
+      "parentId": "fld_read",
+      "name": "List inbox",
+      "description": "Unprocessed stuff.",
+      "method": "GET",
+      "url": "{{ _.base_url }}/items",
+      "body": {},
+      "headers": [],
+      "parameters": [
+        {
+          "name": "status",
+          "value": "inbox",
+          "disabled": false
+        }
+      ],
+      "authentication": {},
+      "metaSortKey": -900,
+      "isPrivate": false,
+      "pathParameters": [],
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global"
+    },
+    {
+      "_id": "req_list_next",
+      "_type": "request",
+      "parentId": "fld_read",
+      "name": "List next actions",
+      "description": "Items already clarified into next actions.",
+      "method": "GET",
+      "url": "{{ _.base_url }}/items",
+      "body": {},
+      "headers": [],
+      "parameters": [
+        {
+          "name": "status",
+          "value": "next",
+          "disabled": false
+        }
+      ],
+      "authentication": {},
+      "metaSortKey": -800,
+      "isPrivate": false,
+      "pathParameters": [],
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global"
+    },
+    {
+      "_id": "req_list_done",
+      "_type": "request",
+      "parentId": "fld_read",
+      "name": "List including completed",
+      "description": "",
+      "method": "GET",
+      "url": "{{ _.base_url }}/items",
+      "body": {},
+      "headers": [],
+      "parameters": [
+        {
+          "name": "include_completed",
+          "value": "true",
+          "disabled": false
+        }
+      ],
+      "authentication": {},
+      "metaSortKey": -700,
+      "isPrivate": false,
+      "pathParameters": [],
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global"
+    },
+    {
+      "_id": "req_list_badstatus",
+      "_type": "request",
+      "parentId": "fld_read",
+      "name": "List - invalid status (400)",
+      "description": "400 {\"error\":\"status must be 'inbox' or 'next'\"}",
+      "method": "GET",
+      "url": "{{ _.base_url }}/items",
+      "body": {},
+      "headers": [],
+      "parameters": [
+        {
+          "name": "status",
+          "value": "someday",
+          "disabled": false
+        }
+      ],
+      "authentication": {},
+      "metaSortKey": -600,
+      "isPrivate": false,
+      "pathParameters": [],
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global"
+    },
+    {
+      "_id": "req_get",
+      "_type": "request",
+      "parentId": "fld_read",
+      "name": "Get item by id",
+      "description": "",
+      "method": "GET",
+      "url": "{{ _.base_url }}/items/{{ _.item_id }}",
+      "body": {},
+      "headers": [],
+      "parameters": [],
+      "authentication": {},
+      "metaSortKey": -500,
+      "isPrivate": false,
+      "pathParameters": [],
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global"
+    },
+    {
+      "_id": "req_get_404",
+      "_type": "request",
+      "parentId": "fld_read",
+      "name": "Get item - not found (404)",
+      "description": "404 {\"error\":\"item not found\"}",
+      "method": "GET",
+      "url": "{{ _.base_url }}/items/999999",
+      "body": {},
+      "headers": [],
+      "parameters": [],
+      "authentication": {},
+      "metaSortKey": -400,
+      "isPrivate": false,
+      "pathParameters": [],
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global"
+    },
+    {
+      "_id": "req_get_badid",
+      "_type": "request",
+      "parentId": "fld_read",
+      "name": "Get item - non-numeric id (400)",
+      "description": "400 {\"error\":\"invalid id\"}",
+      "method": "GET",
+      "url": "{{ _.base_url }}/items/abc",
+      "body": {},
+      "headers": [],
+      "parameters": [],
+      "authentication": {},
+      "metaSortKey": -300,
+      "isPrivate": false,
+      "pathParameters": [],
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global"
+    },
+    {
+      "_id": "req_process",
+      "_type": "request",
+      "parentId": "fld_workflow",
+      "name": "Process into next action",
+      "description": "GTD 'clarify': flips status to 'next' and tags the item with a context.\n\nThe body is optional - send none and it still processes, with an empty context. Notes are only overwritten when non-empty.",
+      "method": "POST",
+      "url": "{{ _.base_url }}/items/{{ _.item_id }}/process",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"context\": \"@errands\",\n  \"notes\": \"whole bean, not ground\"\n}"
+      },
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "parameters": [],
+      "authentication": {},
+      "metaSortKey": -1000,
+      "isPrivate": false,
+      "pathParameters": [],
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global"
+    },
+    {
+      "_id": "req_process_nobody",
+      "_type": "request",
+      "parentId": "fld_workflow",
+      "name": "Process (no body)",
+      "description": "Body deliberately empty - the handler skips decoding when Content-Length is 0.\n\nCareful: this CLEARS an existing context. Item.Process assigns context unconditionally, while notes are only overwritten when non-empty. Run this straight after the request above and watch @errands disappear.",
+      "method": "POST",
+      "url": "{{ _.base_url }}/items/{{ _.item_id }}/process",
+      "body": {},
+      "headers": [],
+      "parameters": [],
+      "authentication": {},
+      "metaSortKey": -900,
+      "isPrivate": false,
+      "pathParameters": [],
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global"
+    },
+    {
+      "_id": "req_update",
+      "_type": "request",
+      "parentId": "fld_workflow",
+      "name": "Update item",
+      "description": "Every field is optional - omit one and it stays as it is. Send \"\" to clear notes or context.",
+      "method": "PATCH",
+      "url": "{{ _.base_url }}/items/{{ _.item_id }}",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"title\": \"Buy coffee beans (dark roast)\",\n  \"notes\": \"500g\",\n  \"context\": \"@errands\"\n}"
+      },
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "parameters": [],
+      "authentication": {},
+      "metaSortKey": -800,
+      "isPrivate": false,
+      "pathParameters": [],
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global"
+    },
+    {
+      "_id": "req_update_status",
+      "_type": "request",
+      "parentId": "fld_workflow",
+      "name": "Update status",
+      "description": "Only 'inbox' and 'next' are accepted.",
+      "method": "PATCH",
+      "url": "{{ _.base_url }}/items/{{ _.item_id }}",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"status\": \"next\"\n}"
+      },
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "parameters": [],
+      "authentication": {},
+      "metaSortKey": -700,
+      "isPrivate": false,
+      "pathParameters": [],
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global"
+    },
+    {
+      "_id": "req_update_badstatus",
+      "_type": "request",
+      "parentId": "fld_workflow",
+      "name": "Update - invalid status (400)",
+      "description": "400 {\"error\":\"status must be 'inbox' or 'next'\"}",
+      "method": "PATCH",
+      "url": "{{ _.base_url }}/items/{{ _.item_id }}",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"status\": \"done\"\n}"
+      },
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "parameters": [],
+      "authentication": {},
+      "metaSortKey": -600,
+      "isPrivate": false,
+      "pathParameters": [],
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global"
+    },
+    {
+      "_id": "req_complete",
+      "_type": "request",
+      "parentId": "fld_workflow",
+      "name": "Complete item",
+      "description": "200 with completed_at set.",
+      "method": "POST",
+      "url": "{{ _.base_url }}/items/{{ _.item_id }}/complete",
+      "body": {},
+      "headers": [],
+      "parameters": [],
+      "authentication": {},
+      "metaSortKey": -500,
+      "isPrivate": false,
+      "pathParameters": [],
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global"
+    },
+    {
+      "_id": "req_complete_twice",
+      "_type": "request",
+      "parentId": "fld_workflow",
+      "name": "Complete again (400)",
+      "description": "400 {\"error\":\"item is already completed\"}. Run this right after 'Complete item'.",
+      "method": "POST",
+      "url": "{{ _.base_url }}/items/{{ _.item_id }}/complete",
+      "body": {},
+      "headers": [],
+      "parameters": [],
+      "authentication": {},
+      "metaSortKey": -400,
+      "isPrivate": false,
+      "pathParameters": [],
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global"
+    },
+    {
+      "_id": "req_delete",
+      "_type": "request",
+      "parentId": "fld_cleanup",
+      "name": "Delete item",
+      "description": "204 No Content, empty body.",
+      "method": "DELETE",
+      "url": "{{ _.base_url }}/items/{{ _.item_id }}",
+      "body": {},
+      "headers": [],
+      "parameters": [],
+      "authentication": {},
+      "metaSortKey": -1000,
+      "isPrivate": false,
+      "pathParameters": [],
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global"
+    },
+    {
+      "_id": "req_delete_404",
+      "_type": "request",
+      "parentId": "fld_cleanup",
+      "name": "Delete - not found (404)",
+      "description": "404 {\"error\":\"item not found\"}",
+      "method": "DELETE",
+      "url": "{{ _.base_url }}/items/999999",
+      "body": {},
+      "headers": [],
+      "parameters": [],
+      "authentication": {},
+      "metaSortKey": -900,
+      "isPrivate": false,
+      "pathParameters": [],
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global"
+    }
+  ]
+}
