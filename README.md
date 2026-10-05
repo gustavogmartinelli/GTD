@@ -50,6 +50,18 @@ storage (e.g. Postgres instead of SQLite) means adding a new
 go run ./cmd/gtd-server -addr :8080 -db gtd.db
 ```
 
+Schema changes are versioned goose migrations in
+`internal/adapter/repository/sqlite/migrations/`, applied automatically on
+startup.
+
+## Deploy
+
+Pushes to `dev` build an arm64 image and deploy it to a private Oracle
+Cloud Always Free VM reachable through Tailscale. See
+[docs/deploy/PLAN.md](docs/deploy/PLAN.md) for the decisions and
+[docs/deploy/oracle-setup.md](docs/deploy/oracle-setup.md) for the
+step-by-step setup.
+
 ## API
 
 | Method | Path                 | Description                                   |

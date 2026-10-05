@@ -1,0 +1,10 @@
+.git
+.github
+.idea
+.vscode
+docs
+deploy
+*.db
+*.db-journal
+*.md
+gtd-server
