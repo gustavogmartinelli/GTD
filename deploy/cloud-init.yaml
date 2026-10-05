@@ -1,0 +1,69 @@
+#cloud-config
+# First-boot setup for the GTD VM (Ubuntu 24.04, Ampere A1, Oracle Cloud).
+#
+# DO NOT paste this file as-is. Copy it to deploy/cloud-init.local.yaml
+# (gitignored), replace the two __PLACEHOLDERS__, and use the copy.
+# See docs/deploy/oracle-setup.md, step 5.
+#
+# Re-running the whole setup on a fresh VM is the disaster-recovery plan,
+# so everything the VM needs that is not a secret lives here.
+
+timezone: America/Sao_Paulo
+package_update: true
+package_upgrade: true
+packages:
+  - ca-certificates
+  - curl
+  - sqlite3
+  - rclone
+  - unattended-upgrades
+
+ssh_pwauth: false
+
+# 2 GiB swap file: headroom for apt, Docker pulls and backups.
+swap:
+  filename: /swapfile
+  size: 2147483648
+
+users:
+  - default            # "ubuntu": your personal admin login (key from the console form)
+  - name: deploy       # used only by GitHub Actions
+    shell: /bin/bash
+    lock_passwd: true
+    ssh_authorized_keys:
+      - __DEPLOY_SSH_PUBKEY__
+
+write_files:
+  - path: /etc/gtd/backup.env
+    permissions: "0600"
+    content: |
+      RCLONE_DEST=oci:gtd-backups
+      HC_PING_URL=
+  - path: /etc/cron.d/gtd-backup
+    content: |
+      SHELL=/bin/bash
+      PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+      30 3 * * * root /opt/gtd/backup.sh >> /var/log/gtd-backup.log 2>&1
+  - path: /etc/logrotate.d/gtd-backup
+    content: |
+      /var/log/gtd-backup.log {
+        monthly
+        rotate 6
+        compress
+        missingok
+        notifempty
+      }
+
+runcmd:
+  # Docker Engine + compose plugin (official convenience script).
+  - curl -fsSL https://get.docker.com | sh
+  - usermod -aG docker deploy
+  # App data: owned by the distroless "nonroot" user (uid 65532).
+  - install -d -o 65532 -g 65532 -m 700 /var/lib/gtd
+  # Deploy directory: CI copies compose.yaml and scripts here.
+  - install -d -o deploy -g deploy -m 755 /opt/gtd
+  - install -o deploy -g deploy -m 644 /dev/null /opt/gtd/.env
+  # Tailscale: joins your tailnet as "gtd-test". Use a one-off auth key
+  # tagged tag:server (tags disable node key expiry).
+  - curl -fsSL https://tailscale.com/install.sh | sh
+  - tailscale up --auth-key=__TAILSCALE_AUTHKEY__ --hostname=gtd-test

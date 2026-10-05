@@ -1,0 +1,19 @@
+# Runs on the VM from /opt/gtd. CI copies this file there on every deploy
+# and writes IMAGE_TAG (a git SHA) into /opt/gtd/.env.
+services:
+  gtd:
+    image: ghcr.io/gustavogmartinelli/gtd:${IMAGE_TAG:?set IMAGE_TAG in /opt/gtd/.env}
+    restart: unless-stopped
+    # Loopback only: nothing is exposed on the public interface.
+    # `tailscale serve` publishes it over HTTPS inside the tailnet.
+    ports:
+      - "127.0.0.1:8080:8080"
+    volumes:
+      - /var/lib/gtd:/data
+    mem_limit: 512m
+    stop_grace_period: 15s
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"

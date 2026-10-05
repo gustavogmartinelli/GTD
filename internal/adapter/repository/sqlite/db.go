@@ -6,27 +6,26 @@
 package sqlite
 
 import (
+	"context"
 	"database/sql"
+	"embed"
 	"fmt"
+	"io/fs"
+	"log"
 
+	"github.com/pressly/goose/v3"
 	_ "modernc.org/sqlite"
 )
 
-const schema = `
-CREATE TABLE IF NOT EXISTS items (
-	id           INTEGER PRIMARY KEY AUTOINCREMENT,
-	title        TEXT NOT NULL,
-	notes        TEXT NOT NULL DEFAULT '',
-	status       TEXT NOT NULL DEFAULT 'inbox',
-	context      TEXT NOT NULL DEFAULT '',
-	created_at   TEXT NOT NULL,
-	updated_at   TEXT NOT NULL,
-	completed_at TEXT
-);
-CREATE INDEX IF NOT EXISTS idx_items_status ON items(status);
-`
+// migrations holds the versioned schema. Add a new file
+// NNNNN_description.sql for every schema change; never edit one that has
+// already been deployed.
+//
+//go:embed migrations/*.sql
+var migrations embed.FS
 
-// Open connects to the SQLite database at path and applies the schema.
+// Open connects to the SQLite database at path and applies any pending
+// migrations.
 func Open(path string) (*sql.DB, error) {
 	db, err := sql.Open("sqlite", path)
 	if err != nil {
@@ -36,9 +35,28 @@ func Open(path string) (*sql.DB, error) {
 	// "database is locked" errors under concurrent requests.
 	db.SetMaxOpenConns(1)
 
-	if _, err := db.Exec(schema); err != nil {
+	if err := migrate(db); err != nil {
 		db.Close()
-		return nil, fmt.Errorf("apply schema: %w", err)
+		return nil, err
 	}
 	return db, nil
+}
+
+func migrate(db *sql.DB) error {
+	fsys, err := fs.Sub(migrations, "migrations")
+	if err != nil {
+		return fmt.Errorf("load migrations: %w", err)
+	}
+	provider, err := goose.NewProvider(goose.DialectSQLite3, db, fsys)
+	if err != nil {
+		return fmt.Errorf("init migrations: %w", err)
+	}
+	results, err := provider.Up(context.Background())
+	if err != nil {
+		return fmt.Errorf("apply migrations: %w", err)
+	}
+	for _, r := range results {
+		log.Printf("applied migration %s", r.Source.Path)
+	}
+	return nil
 }
